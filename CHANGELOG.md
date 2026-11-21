@@ -4,11 +4,19 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-21
+
 ### Added
 
 - `scripts/git_identity.py`：从 GitHub 账号同步 `user.name` / `user.email`，默认使用 noreply 地址保护隐私（`--public-email` 可改用公开邮箱）；默认只读，`--apply` 才写入，幂等。
 - 审计新增 `GIT-IDENTITY`（P2）：git 仓库未配置提交身份时提示。
 - `SKILL.md` 与 `references/github-publish.md` 明确身份同步的时机（登录后、发布前、审计、手动）与取值链路。
+
+### Fixed
+
+- 内网域名规则要求 URL / 邮箱上下文再识别 `.local`，修复 `args.local`、`obj.local` 之类代码属性被误判。
+- `.auditignore` 现在同时作用于 git 历史扫描，避免文档示例在历史中持续误报。
+- `GIT-IDENTITY` 在 CI 环境自动跳过，避免 GitHub Actions 无提交身份时必然误报。
 
 ## [1.1.0] - 2026-11-21
 
@@ -20,8 +28,6 @@
 
 ### Fixed
 
-- 内网域名规则要求 URL / 邮箱上下文再识别 `.local`，修复 `args.local`、`obj.local` 之类代码属性被误判。
-- `.auditignore` 现在同时作用于 git 历史扫描，避免文档示例在历史中持续误报。
 - 历史扫描复用工作区扫描的误报过滤（占位符、行内豁免、私钥密钥体校验），修复 `postgres://user:pass@host/db`、文档私钥示例被误判为 P0。
 - 历史扫描按 hunk 合并连续新增行后再匹配，真实多行私钥仍可正确命中。
 
