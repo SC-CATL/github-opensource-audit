@@ -76,6 +76,7 @@ references/
   report-template.md         报告模板与定级示例
 scripts/
   audit_repo.py              只读扫描器
+  git_identity.py            从 GitHub 账号同步提交身份
 .github/                     Issue / PR 模板与 CI
 ```
 
@@ -90,6 +91,7 @@ scripts/
 技能不仅能审查，也能在你要求「直接开源」时代为完成发布：
 
 - 前置检查：gh 登录、`workflow` scope、git 凭据助手、提交身份
+- 提交身份：从 GitHub 账号自动同步 `user.name` / `user.email`（默认 noreply，保护隐私）
 - 建仓、推送、设置 topics
 - 逐项验证远端：可见性、许可证识别、文件完整性、首次 CI、Release
 

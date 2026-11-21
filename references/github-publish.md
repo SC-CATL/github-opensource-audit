@@ -66,6 +66,46 @@ $env:GIT_TERMINAL_PROMPT = "0"
 
 让它快速失败而不是等待输入。
 
+### git 提交身份同步
+
+连接 GitHub 后不必手填 `user.name` / `user.email`，从账号取即可。
+
+**时机**
+
+| 场景 | 动作 |
+|---|---|
+| `gh auth login` 之后、首次发布前 | 只读检测；缺失则询问是否同步 |
+| 每次发布前的前置检查 | 只读检测；缺失即暂停 |
+| 审计 | 只读检测，命中报 `GIT-IDENTITY`（P2） |
+| 用户主动要求 | 直接运行脚本 |
+
+**方式**
+
+```bash
+python scripts/git_identity.py            # 只读预览，需要写入时退出码 2
+python scripts/git_identity.py --apply    # 写入全局
+python scripts/git_identity.py --apply --local  # 只写当前仓库
+```
+
+取值链路：
+
+```
+gh api user
+  user.name  = name
+               为空回退 login
+  user.email = {id}+{login}@users.noreply.github.com   默认，保护隐私
+               --public-email 时改用账号公开邮箱
+```
+
+`{id}+{login}@users.noreply.github.com` 是 GitHub 官方的隐私邮箱格式，提交后仍能正确归因到账号，同时不暴露真实邮箱。
+
+要点：
+
+- 默认写全局；在共享机器或临时环境用 `--local`。
+- 幂等：已是期望值就直接返回 0；新旧 noreply 格式（带 id / 不带 id）视为等价，不重复改写。
+- 已有身份与 GitHub 账号**不一致时只提示、不覆盖**——可能是公司或个人身份，需要用户自己决定。
+- `--json` 输出 `status`（`match` / `missing` / `differs`），便于脚本判断是否继续。
+
 ---
 
 ## 三、创建并推送

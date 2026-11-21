@@ -185,7 +185,7 @@ git log -p --all --unified=0 | grep -nE 'AKIA[0-9A-Z]{16}|gh[pousr]_|BEGIN .*PRI
 | 已登录 | `gh auth status` | push 失败 |
 | token 含 `workflow` scope | 看 `gh auth status` 的 scopes 行 | 整次 push 被拒 |
 | git 凭据助手 | `git config --global --get-regexp credential` | push 挂起等密码 |
-| git 身份 | `git config user.name` / `user.email` | commit 失败或作者错误 |
+| git 身份 | `git config user.name` / `user.email` | commit 失败或作者错误（见下节自动同步） |
 
 仓库里有 `.github/workflows/*` 时必须额外授权：
 
@@ -196,6 +196,33 @@ gh auth refresh -s workflow
 否则报 `refusing to allow an OAuth App to create or update workflow`。这是 OAuth App 的 scope 限制，仓库 owner 也一样被拒。
 
 非交互环境先设 `GIT_TERMINAL_PROMPT=0`，让缺凭据时快速失败而不是挂起。
+
+### git 身份：连接 GitHub 后同步
+
+**时机**（只在这四个节点，写入永远需要确认）
+
+| 场景 | 动作 |
+|---|---|
+| `gh auth login` 之后、首次发布前 | 只读检测；缺失则询问是否用 GitHub 账号同步 |
+| 每次发布前的前置检查 | 只读检测；缺失即暂停，不静默写入 |
+| 审计阶段 | 只读检测，命中报 `GIT-IDENTITY`（P2） |
+| 用户主动要求 | 直接运行脚本 |
+
+**方式**
+
+1. `gh api user` 取 `login`、`id`、`name`、`email`
+2. `user.name` = `name`，为空回退 `login`
+3. `user.email` 默认用 `{id}+{login}@users.noreply.github.com`（noreply，保护隐私）；加 `--public-email` 才用账号公开邮箱
+4. 默认写全局，`--local` 只写当前仓库
+5. 幂等：已是期望值就不写；新旧 noreply 格式（带 id / 不带 id）视为等价
+
+```bash
+python scripts/git_identity.py            # 只读预览，需要写入时退出码 2
+python scripts/git_identity.py --apply    # 写入全局
+python scripts/git_identity.py --apply --local
+```
+
+已有身份与 GitHub 账号不一致时**只提示不覆盖**，因为可能是有意使用公司或个人身份。
 
 ### 创建与推送
 
@@ -244,6 +271,7 @@ gh repo edit <owner>/<name> --add-topic topic1,topic2
 - 不确定是否为真实数据的，按 P0 处理并让用户确认，不要自行判定为"测试数据"。
 - 脚本退出码为 0 不代表可以发布，只代表没命中已知模式。
 - **在非交互环境直接跑 `git push` 前，先确认凭据助手已配置**，否则会挂起而不是报错。
+- **不要静默改写已有的 git 身份**，同步必须经用户确认后加 `--apply`。
 - **缺 `workflow` scope 时不要反复重试 push**，那会一直失败；先 `gh auth refresh -s workflow`。
 - **发布后必须看第一次 CI**，本地绿不等于远端绿。
 

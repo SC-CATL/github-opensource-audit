@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/git_identity.py`：从 GitHub 账号同步 `user.name` / `user.email`，默认使用 noreply 地址保护隐私（`--public-email` 可改用公开邮箱）；默认只读，`--apply` 才写入，幂等。
+- 审计新增 `GIT-IDENTITY`（P2）：git 仓库未配置提交身份时提示。
+- `SKILL.md` 与 `references/github-publish.md` 明确身份同步的时机（登录后、发布前、审计、手动）与取值链路。
+
 ## [1.1.0] - 2026-11-21
 
 ### Added

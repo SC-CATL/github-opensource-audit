@@ -707,6 +707,24 @@ def check_license_intent(findings, declared, detected):
         ))
 
 
+def check_git_identity(root, findings):
+    ok, out = git(root, ["rev-parse", "--is-inside-work-tree"])
+    if not ok or out.decode("utf-8", "replace").strip() != "true":
+        return
+    missing = []
+    for key in ("user.name", "user.email"):
+        ok, out = git(root, ["config", "--get", key])
+        if not ok or not out.decode("utf-8", "replace").strip():
+            missing.append(key)
+    if missing:
+        findings.append(Finding(
+            "P2", "GIT-IDENTITY", "未配置 git 提交身份", "", 0,
+            "、".join("`%s`" % key for key in missing),
+            "缺少身份时 commit 会失败，或用错误身份写进公开历史。",
+            "运行 python scripts/git_identity.py --apply 从 GitHub 账号同步；先用 --json 预览。",
+        ))
+
+
 def check_required(root, findings, declared=None):
     entries = os.listdir(root) if os.path.isdir(root) else []
     lower = {name.lower(): name for name in entries}
@@ -1194,6 +1212,7 @@ def main(argv=None):
     check_file_hygiene(root, files, findings, args.max_size)
     check_content(root, files, findings)
     check_ignore(root, files, findings)
+    check_git_identity(root, findings)
     check_required(root, findings, declared)
     check_license_intent(findings, declared, spdx)
     check_readme(root, findings, spdx)
