@@ -1,5 +1,10 @@
 # GitHub 开源发布审查
 
+[![Open Source Audit](https://github.com/SC-CATL/github-opensource-audit/actions/workflows/audit.yml/badge.svg)](https://github.com/SC-CATL/github-opensource-audit/actions/workflows/audit.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![OpenCode Skill](https://img.shields.io/badge/OpenCode-Skill-6f42c1.svg)](SKILL.md)
+
 一个 OpenCode 技能：在把项目推到 GitHub 之前，检查**有没有不该上传的内容**，以及**开源必备要素是否齐全**。
 
 ## 它检查什么
