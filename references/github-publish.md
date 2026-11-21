@@ -146,6 +146,10 @@ GitHub 识别不出 LICENSE 通常有两个原因：文件名不在白名单，�
 - 必需状态检查的 context 是**job 名**，不是 workflow 名。先用 `gh api repos/{o}/{r}/commits/main/check-runs --jq '.check_runs[].name'` 确认。
 - 个人项目不要设 `required_pull_request_reviews`（无法自己批准自己的 PR），否则只能走管理员绕过。
 - `enforce_admins: false` 保留 owner 直推能力；要完全锁死再设为 `true`。
+- 开着保护但 `enforce_admins: false` 时，owner 直推会成功，同时远端提示
+  `Bypassed rule violations ... Required status check "audit" is expected`。
+  这是**预期行为**，不是推送失败——但它也意味着"必需检查"对 owner 并不生效。
+  想连自己也不能绕过，就设 `enforce_admins: true`，此后所有改动必须走 PR 且 CI 通过。
 
 ```bash
 gh api -X PUT repos/{o}/{r}/branches/main/protection --input protection.json
