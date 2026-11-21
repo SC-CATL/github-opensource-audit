@@ -34,6 +34,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
+from fnmatch import fnmatch
 
 # ---------------------------------------------------------------------------
 # 常量
@@ -225,6 +226,7 @@ class Baseline:
     commits: int = 0
     tracked: int = 0
     untracked: int = 0
+    ignored: int = 0
     scanned: int = 0
     total_size: int = 0
     remotes: list = field(default_factory=list)
@@ -265,12 +267,43 @@ def load_excludes(root, extra):
 
 
 def is_excluded(rel, patterns):
-    from fnmatch import fnmatch
     for pattern in patterns:
         base = pattern.rstrip("/")
         if fnmatch(rel, base) or fnmatch(rel, base + "/*") or rel.startswith(base + "/"):
             return True
     return False
+
+
+def load_gitignore(root):
+    """非 git 模式下用 .gitignore 近似判断忽略项，减少产物噪音。"""
+    patterns = []
+    path = os.path.join(root, ".gitignore")
+    if not os.path.isfile(path):
+        return patterns
+    for line in read_text(path).splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        negate = line.startswith("!")
+        if negate:
+            line = line[1:].strip()
+        if not line:
+            continue
+        patterns.append((line.rstrip("/"), negate))
+    return patterns
+
+
+def gitignore_ignored(rel, patterns):
+    ignored = False
+    parts = rel.split("/")
+    for pattern, negate in patterns:
+        if "/" in pattern:
+            hit = fnmatch(rel, pattern) or rel.startswith(pattern + "/")
+        else:
+            hit = any(fnmatch(part, pattern) for part in parts)
+        if hit:
+            ignored = not negate
+    return ignored
 
 
 def human_size(num):
@@ -353,28 +386,42 @@ def normalize_spdx(value):
 # ---------------------------------------------------------------------------
 
 def collect_files(root, tracked_only):
-    """返回 (files, untracked_set)。files 是相对路径列表（/ 分隔）。"""
+    """返回 (files, untracked, ignored_skipped)。路径统一用 / 分隔。"""
     is_git, _ = git(root, ["rev-parse", "--is-inside-work-tree"])
     if is_git:
         tracked = git_list(root, ["ls-files", "-z"]) or []
         untracked = []
         if not tracked_only:
             untracked = git_list(root, ["ls-files", "-z", "--others", "--exclude-standard"]) or []
-        return tracked, untracked
+        return tracked, untracked, 0
 
-    # 非 git：遍历目录，剪掉重依赖目录
+    # 非 git：遍历目录，按 .gitignore 近似过滤，避免把产物当违规
+    patterns = load_gitignore(root)
     files = []
+    skipped = 0
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d != ".git"]
         rel_dir = os.path.relpath(dirpath, root).replace("\\", "/")
         if rel_dir == ".":
             rel_dir = ""
+        kept = []
+        for name in dirnames:
+            if name == ".git":
+                continue
+            rel = "%s/%s" % (rel_dir, name) if rel_dir else name
+            if patterns and gitignore_ignored(rel, patterns):
+                skipped += 1
+                continue
+            kept.append(name)
+        dirnames[:] = kept
         for name in filenames:
             rel = "%s/%s" % (rel_dir, name) if rel_dir else name
+            if patterns and gitignore_ignored(rel, patterns):
+                skipped += 1
+                continue
             files.append(rel)
             if len(files) >= WALK_FILE_CAP:
-                return files, []
-    return files, []
+                return files, [], skipped
+    return files, [], skipped
 
 
 # ---------------------------------------------------------------------------
@@ -1012,7 +1059,7 @@ def render_markdown(baseline, findings, root, declared=None):
             lines.append("- **远端**：%s" % "、".join(baseline.remotes))
         lines.append("- **已跟踪文件**：%d　**未跟踪未忽略**：%d" % (baseline.tracked, baseline.untracked))
     else:
-        lines.append("- **文件数**：%d" % baseline.tracked)
+        lines.append("- **文件数**：%d（按 .gitignore 跳过 %d 项）" % (baseline.tracked, baseline.ignored))
     lines.append("- **扫描文件**：%d　**总体积**：%s" % (baseline.scanned, human_size(baseline.total_size)))
     lines.append("- **本次版本许可证**：%s" % (declared if declared else "未确认"))
     lines.append("- **时间**：%s" % datetime.now().strftime("%Y-%m-%d %H:%M"))
@@ -1118,9 +1165,10 @@ def main(argv=None):
                     remotes.add(parts[1])
             baseline.remotes = sorted(remotes)
 
-    tracked, untracked = collect_files(root, args.tracked_only)
+    tracked, untracked, ignored = collect_files(root, args.tracked_only)
     baseline.tracked = len(tracked)
     baseline.untracked = len(untracked)
+    baseline.ignored = ignored
 
     files = list(dict.fromkeys(tracked + untracked))
     excludes = load_excludes(root, args.exclude)
@@ -1181,6 +1229,7 @@ def main(argv=None):
                 "commits": baseline.commits,
                 "tracked": baseline.tracked,
                 "untracked": baseline.untracked,
+                "ignored": baseline.ignored,
                 "scanned": baseline.scanned,
                 "total_size": baseline.total_size,
                 "remotes": baseline.remotes,

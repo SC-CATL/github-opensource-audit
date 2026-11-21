@@ -14,7 +14,7 @@ description: 在项目准备开源、上传或推送到 GitHub、把私有仓库
 
 只要语义指向「把代码放到 GitHub / 公开出去」，就应使用本技能：
 
-- 动作类：开源、开源到 GitHub、上传到 GitHub、发布到 GitHub、推到 GitHub、push 上去、提交到远程、公开仓库、私有转公开、首次发布、发版。
+- 动作类：开源、开源到 GitHub、上传到 GitHub、发布到 GitHub、推到 GitHub、push 上去、提交到远程、公开仓库、私有转公开、首次发布、发版；**以及要求你直接代为建仓并推送**。
 - 判断类：这个仓库能公开吗、适合开源吗、发布前还缺什么、有没有不该上传的东西。
 - 规范类：开源规范、仓库结构是否标准、LICENSE 选哪种、README 该怎么写、开源清单。
 - 排查类：怀疑密钥或敏感数据进了仓库、要清理提交历史、要确认历史里有没有泄露。
@@ -39,7 +39,7 @@ description: 在项目准备开源、上传或推送到 GitHub、把私有仓库
 
 - 已公开仓库的日常代码评审（用普通 review 流程）。
 - 漏洞扫描、依赖 CVE 审计（那是 SCA 工具的职责，本技能只提示方向）。
-- GitHub 远端设置（description / topics / 分支保护 / Releases）——不在本技能范围。
+- GitHub 远端运营配置（Pages、团队权限、CI 矩阵调优）——发布时只做最小验证，见 `references/github-publish.md`。
 
 ## 快速开始
 
@@ -173,6 +173,59 @@ git log -p --all --unified=0 | grep -nE 'AKIA[0-9A-Z]{16}|gh[pousr]_|BEGIN .*PRI
 4. 每条问题：级别、位置（文件:行）、证据（脱敏）、为什么危险、怎么修
 5. 历史相关的问题单独成节
 
+## 发布执行与验证
+
+只在用户要求**真正发布**时执行；只问「能不能公开」则停在审查这一步。
+
+### 前置检查（一次性）
+
+| 项 | 命令 | 失败后果 |
+|---|---|---|
+| gh 可用 | `gh --version` | 无法建仓 |
+| 已登录 | `gh auth status` | push 失败 |
+| token 含 `workflow` scope | 看 `gh auth status` 的 scopes 行 | 整次 push 被拒 |
+| git 凭据助手 | `git config --global --get-regexp credential` | push 挂起等密码 |
+| git 身份 | `git config user.name` / `user.email` | commit 失败或作者错误 |
+
+仓库里有 `.github/workflows/*` 时必须额外授权：
+
+```bash
+gh auth refresh -s workflow
+```
+
+否则报 `refusing to allow an OAuth App to create or update workflow`。这是 OAuth App 的 scope 限制，仓库 owner 也一样被拒。
+
+非交互环境先设 `GIT_TERMINAL_PROMPT=0`，让缺凭据时快速失败而不是挂起。
+
+### 创建与推送
+
+```bash
+gh repo create <owner>/<name> --public --source . --remote origin --push --description "<一句话>"
+gh repo edit <owner>/<name> --add-topic topic1,topic2
+```
+
+`--push` 失败时仓库**已经创建**，重试只需 `git push -u origin main`，不要重复 `repo create`。
+
+### 验证（不可跳过）
+
+创建成功 ≠ 发布成功。逐项确认：
+
+- 可见性 `PUBLIC`、默认分支 `main`
+- 远端文件齐全（含 `LICENSE`、`README.md`、`.github/`）
+- `gh api repos/{o}/{r}/license` 能识别出 SPDX
+- Topics 已设置
+- 第一次 CI 为 `success`
+- tag / Release 已发布
+
+### 本地绿 ≠ 远端绿
+
+本地可能走「非 git 降级扫描」，CI 必然走 git 模式，历史范围也不同。
+发布后必须看 CI：`gh run view <id> --log-failed`。
+
+**同一套检测逻辑必须在工作区、已跟踪、历史三条路径复用**，否则必然出现本地过、CI 挂。
+
+完整排查表与分支保护配置见 `references/github-publish.md`。
+
 ## 分级
 
 | 级别 | 含义 | 处理 |
@@ -190,6 +243,9 @@ git log -p --all --unified=0 | grep -nE 'AKIA[0-9A-Z]{16}|gh[pousr]_|BEGIN .*PRI
 - 不要建议"直接删掉 `.env` 就安全了"——已经提交过的，先轮换。
 - 不确定是否为真实数据的，按 P0 处理并让用户确认，不要自行判定为"测试数据"。
 - 脚本退出码为 0 不代表可以发布，只代表没命中已知模式。
+- **在非交互环境直接跑 `git push` 前，先确认凭据助手已配置**，否则会挂起而不是报错。
+- **缺 `workflow` scope 时不要反复重试 push**，那会一直失败；先 `gh auth refresh -s workflow`。
+- **发布后必须看第一次 CI**，本地绿不等于远端绿。
 
 ## 参考
 
@@ -197,5 +253,6 @@ git log -p --all --unified=0 | grep -nE 'AKIA[0-9A-Z]{16}|gh[pousr]_|BEGIN .*PRI
 - `references/required-files.md` —— 必备文件矩阵与各文件最小内容
 - `references/licenses.md` —— 许可证选择、SPDX、常见错误
 - `references/history-cleanup.md` —— 历史泄露的处置流程
+- `references/github-publish.md` —— 认证、workflow scope、推送排查、远端验证
 - `references/report-template.md` —— 报告模板与定级示例
 - `scripts/audit_repo.py` —— 只读扫描脚本

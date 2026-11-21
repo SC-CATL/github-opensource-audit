@@ -4,10 +4,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- `references/github-publish.md`：认证、workflow scope、凭据助手、push 排查、远端验证清单、分支保护。
+- `SKILL.md` 新增「发布执行与验证」章节：前置检查、建仓推送、远端逐项验证、本地绿≠远端绿。
+- 非 git 模式下按 `.gitignore` 近似过滤，报告头显示跳过数量，减少产物误报。
+
 ### Fixed
 
 - 历史扫描复用工作区扫描的误报过滤（占位符、行内豁免、私钥密钥体校验），修复 `postgres://user:pass@host/db`、文档私钥示例被误判为 P0。
 - 历史扫描按 hunk 合并连续新增行后再匹配，真实多行私钥仍可正确命中。
+
+### Changed
+
+- CI 的 GitHub Actions 升级到 `checkout@v7`、`setup-python@v7`、`upload-artifact@v7`，消除 Node 20 弃用告警。
 
 ### Added
 

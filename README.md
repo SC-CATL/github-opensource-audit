@@ -72,6 +72,7 @@ references/
   required-files.md          必备文件矩阵与最小内容
   licenses.md                许可证选择与常见错误
   history-cleanup.md         历史泄露处置（先轮换，再清理）
+  github-publish.md          认证、推送排查与远端验证
   report-template.md         报告模板与定级示例
 scripts/
   audit_repo.py              只读扫描器
@@ -83,6 +84,16 @@ scripts/
 欢迎提 issue 和 PR。开始前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，参与即表示同意 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。
 
 安全问题请按 [SECURITY.md](SECURITY.md) 私下报告，不要开公开 issue。
+
+## 发布到 GitHub
+
+技能不仅能审查，也能在你要求「直接开源」时代为完成发布：
+
+- 前置检查：gh 登录、`workflow` scope、git 凭据助手、提交身份
+- 建仓、推送、设置 topics
+- 逐项验证远端：可见性、许可证识别、文件完整性、首次 CI、Release
+
+发布链路上的坑（workflow scope 被拒、push 卡在凭据提示、本地绿但 CI 红）与排查表见 [references/github-publish.md](references/github-publish.md)。
 
 ## 局限
 
