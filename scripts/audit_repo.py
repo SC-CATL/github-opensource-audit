@@ -712,6 +712,9 @@ def check_license_intent(findings, declared, detected):
 
 
 def check_git_identity(root, findings):
+    # CI 环境不需要提交身份，跳过以免误报
+    if os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("CI") == "true":
+        return
     ok, out = git(root, ["rev-parse", "--is-inside-work-tree"])
     if not ok or out.decode("utf-8", "replace").strip() != "true":
         return
