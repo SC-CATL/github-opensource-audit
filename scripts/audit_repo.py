@@ -516,6 +516,30 @@ def check_file_hygiene(root, files, findings, max_size_mb):
             ))
 
 
+def iter_secret_hits(text, start_line=1):
+    """扫描文本中的敏感模式，产出 (code, title, level, value, line_no, why, fix)。
+
+    工作区与历史扫描共用同一套误报过滤：占位符、行内豁免、私钥密钥体校验。
+    """
+    lines = text.splitlines()
+    for code, title, pattern, level, why, fix in SECRET_PATTERNS:
+        hits = 0
+        for match in pattern.finditer(text):
+            value = match.group(1) if match.groups() else match.group(0)
+            if is_placeholder(value) or is_placeholder(match.group(0)):
+                continue
+            offset = text.count("\n", 0, match.start())
+            line_text = lines[offset].lower() if offset < len(lines) else ""
+            if any(marker in line_text for marker in IGNORE_MARKERS):
+                continue
+            if code == "SEC-PRIVKEY" and not has_key_body(text, match.end()):
+                continue
+            yield code, title, level, value, start_line + offset, why, fix
+            hits += 1
+            if hits >= MAX_FINDINGS_PER_PATTERN:
+                break
+
+
 def check_content(root, files, findings):
     for rel in files:
         abspath = os.path.join(root, rel)
@@ -532,26 +556,11 @@ def check_content(root, files, findings):
         if not text:
             continue
 
-        lines = text.splitlines()
-        for code, title, pattern, level, why, fix in SECRET_PATTERNS:
-            hits = 0
-            for match in pattern.finditer(text):
-                value = match.group(1) if match.groups() else match.group(0)
-                if is_placeholder(value) or is_placeholder(match.group(0)):
-                    continue
-                line_no = text.count("\n", 0, match.start()) + 1
-                line_text = lines[line_no - 1].lower() if line_no <= len(lines) else ""
-                if any(marker in line_text for marker in IGNORE_MARKERS):
-                    continue
-                if code == "SEC-PRIVKEY" and not has_key_body(text, match.end()):
-                    continue
-                findings.append(Finding(
-                    level, code, title, rel, line_no,
-                    mask(value) if code in MASK_CODES else value, why, fix,
-                ))
-                hits += 1
-                if hits >= MAX_FINDINGS_PER_PATTERN:
-                    break
+        for code, title, level, value, line_no, why, fix in iter_secret_hits(text):
+            findings.append(Finding(
+                level, code, title, rel, line_no,
+                mask(value) if code in MASK_CODES else value, why, fix,
+            ))
 
         emails = set(re.findall(r"[\w.+-]+@[\w-]+\.[\w.-]+", text))
         real = {e for e in emails if not e.lower().endswith(("example.com", "example.org", "test.com"))}
@@ -920,28 +929,23 @@ def check_history(root, findings, max_commits):
 
     current_file = ""
     current_commit = ""
+    block = []
+    block_start = 1
     seen = set()
     count = 0
-    for raw in out.decode("utf-8", "replace").splitlines():
-        if raw.startswith("commit "):
-            current_commit = raw[7:14]
-            continue
-        if raw.startswith("+++ b/"):
-            current_file = raw[6:]
-            continue
-        if not raw.startswith("+") or raw.startswith("+++"):
-            continue
-        line = raw[1:]
-        for code, title, pattern, level, why, fix in SECRET_PATTERNS:
-            match = pattern.search(line)
-            if not match:
-                continue
-            value = match.group(1) if match.groups() else match.group(0)
-            if is_placeholder(value):
-                continue
+    stop = False
+
+    def flush():
+        """把当前 hunk 的连续新增行拼成块再扫描，保证私钥密钥体校验有效。"""
+        nonlocal block, count, stop
+        if not block or stop:
+            block = []
+            return
+        text = "\n".join(block)
+        for code, title, level, value, line_no, _why, _fix in iter_secret_hits(text, block_start):
             key = (code, current_file)
             if key in seen:
-                break
+                continue
             seen.add(key)
             findings.append(Finding(
                 "P0" if level == "P0" else "P1", "HIST-CONTENT",
@@ -952,8 +956,32 @@ def check_history(root, findings, max_commits):
             ))
             count += 1
             if count >= MAX_HISTORY_FINDINGS:
-                return
+                stop = True
+                break
+        block = []
+
+    for raw in out.decode("utf-8", "replace").splitlines():
+        if raw.startswith("commit "):
+            flush()
+            current_commit = raw[7:14]
+            continue
+        if raw.startswith("+++ b/"):
+            flush()
+            current_file = raw[6:]
+            continue
+        if raw.startswith("@@"):
+            flush()
+            match = re.search(r"\+(\d+)", raw)
+            block_start = int(match.group(1)) if match else 1
+            continue
+        if raw.startswith("+") and not raw.startswith("+++"):
+            block.append(raw[1:])
+            continue
+        flush()
+        if stop:
             break
+
+    flush()
 
 
 # ---------------------------------------------------------------------------
