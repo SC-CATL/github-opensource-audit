@@ -124,7 +124,11 @@ SECRET_PATTERNS = [
      "P2", "暴露内网拓扑，便于攻击者定位目标。",
      "改为 localhost、环境变量或 example 地址。"),
     ("SEC-INTDOMAIN", "内网域名",
-     re.compile(r"(?<![.\w*/-])\b[a-z0-9][a-z0-9\-]*(?:\.[a-z0-9\-]+)*\.(?:local|corp|internal|intranet|lan)\b", re.I),
+     re.compile(
+         # .local 与代码里的 obj.local 冲突，只在 URL / 邮箱上下文识别
+         r"(?:(?:https?|ftp)://|@)[a-z0-9][a-z0-9\-]*(?:\.[a-z0-9\-]+)*\.local\b"
+         r"|(?<![\w.-])(?:[a-z0-9][a-z0-9\-]*\.)+(?:corp|internal|intranet|lan)\b",
+         re.I),
      "P2", "暴露内部系统命名与访问路径。",
      "改为占位域名，如 db.example.com。"),
     ("SEC-CNMOBILE", "中国手机号",
@@ -952,7 +956,8 @@ def check_manifest(root, findings, spdx):
             ))
 
 
-def check_history(root, findings, max_commits):
+def check_history(root, findings, max_commits, excludes=None):
+    excludes = excludes or []
     ok, out = git(root, ["rev-list", "--all", "--objects"], timeout=180)
     if not ok:
         return
@@ -966,6 +971,8 @@ def check_history(root, findings, max_commits):
         if not path or path in seen_paths:
             continue
         seen_paths.add(path)
+        if is_excluded(path, excludes):
+            continue
         low = path.lower()
         for pattern, label in SECRET_FILE_RULES:
             if re.search(pattern, low):
@@ -1004,6 +1011,9 @@ def check_history(root, findings, max_commits):
         """把当前 hunk 的连续新增行拼成块再扫描，保证私钥密钥体校验有效。"""
         nonlocal block, count, stop
         if not block or stop:
+            block = []
+            return
+        if current_file and is_excluded(current_file, excludes):
             block = []
             return
         text = "\n".join(block)
@@ -1220,7 +1230,7 @@ def main(argv=None):
 
     if args.history:
         if baseline.is_git:
-            check_history(root, findings, args.history_commits)
+            check_history(root, findings, args.history_commits, excludes)
         else:
             findings.append(Finding(
                 "P3", "HIST-SKIP", "未检测到 git，跳过历史扫描", "", 0, "",

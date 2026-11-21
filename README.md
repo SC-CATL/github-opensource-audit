@@ -67,6 +67,7 @@ CONTRIBUTING.md              贡献指南
 CODE_OF_CONDUCT.md           行为准则
 SECURITY.md                  漏洞报告渠道
 CHANGELOG.md                 版本记录
+.auditignore                 扫描排除（同时作用于历史）
 references/
   forbidden-content.md       不该上传的内容清单
   required-files.md          必备文件矩阵与最小内容

@@ -59,7 +59,7 @@ python scripts/audit_repo.py . --exclude "test/fixtures/"   # 跳过已知安全
 
 ### 误报处理
 
-- 在项目根目录放 `.auditignore`，每行一个路径或 glob（支持 `dir/`、`*.min.js`），扫描时跳过。
+- 在项目根目录放 `.auditignore`，每行一个路径或 glob（支持 `dir/`、`*.min.js`），扫描时跳过，**同样作用于 git 历史扫描**。
 - 单行豁免：在命中行加注释 `audit:allow`（或 `gitleaks:allow`、`nosec`），该行不再报警。
 - 私钥规则要求头部后跟至少 40 位密钥体，纯文档示例不会误报。
 - 内网 IP、域名等非凭据信息不做脱敏，方便定位。
