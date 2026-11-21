@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "如果本技能对你的工作有帮助，可按以下信息引用。"
+title: "GitHub 开源发布审查"
+abstract: "推送 GitHub 前的开源就绪度审查：检测不该上传的敏感内容与文件，并校验 LICENSE、README 等必备要素。"
+type: software
+authors:
+  - name: "SC-CATL"
+license: MIT
+version: 1.0.0
+date-released: 2026-11-21
+keywords:
+  - open source
+  - github
+  - security audit
+  - secret scanning
+  - license compliance

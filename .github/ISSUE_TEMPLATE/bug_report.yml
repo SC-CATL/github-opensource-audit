@@ -1,0 +1,116 @@
+name: 问题反馈
+description: 报告误报、漏报或运行异常
+title: "[问题] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 填写指引
+
+        1. **先搜索**：用关键词（如「误报 .env」「Windows 路径」）搜一下已有 issue，避免重复。
+        2. **一个问题一个 issue**：不要在一次提交里混入多个不相关的问题。
+        3. **给最小复现**：不要贴整个项目，只保留能触发问题的最少文件。
+        4. **必须脱敏**：真实密钥、令牌、手机号、身份证一律替换成 `AKIA****MPLE` 这种形式。
+        5. **说清期望与实际**：只写「有问题」无法定位，要写清你以为会发生什么、实际发生了什么。
+
+        下面的每一项都直接影响排查速度，请尽量填完整。
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 问题类型
+      description: 选错类型会拖慢处理，请按实际现象选择
+      options:
+        - 误报：命中了不该报的内容
+        - 漏报：应该命中却没报
+        - 运行报错：脚本异常退出
+        - 报告格式：Markdown / JSON 输出有问题
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本或提交
+      description: 在仓库根目录执行 `git rev-parse --short HEAD` 获取
+      placeholder: "v1.0.0 或 a1b2c3d"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      description: 跨平台路径与编码差异是常见原因
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python 版本
+      description: 执行 `python --version` 的结果
+      placeholder: "3.12.10"
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 从零开始，按顺序写清每一步命令
+      placeholder: |
+        1. 新建目录 demo/
+        2. 写入文件 .env，内容为 DB_PASSWORD=****
+        3. 执行 python scripts/audit_repo.py demo/
+        4. 观察到 ...
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+      description: 你希望脚本报什么、报在哪个级别、为什么
+      placeholder: "期望命中 SEC-FILE，级别 P0，位置 .env"
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      description: 实际输出，可直接粘贴报告片段
+      placeholder: |
+        未命中任何规则，退出码 0。
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或报告片段
+      description: 粘贴前请再次确认已脱敏
+      render: shell
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充信息
+      description: 是否使用了 `.auditignore`、`--exclude`、`--history`？是否有自定义规则？
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过已有 issue，确认不是重复
+          required: true
+        - label: 我已删除或替换所有真实密钥与个人信息
+          required: true

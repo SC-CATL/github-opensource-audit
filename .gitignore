@@ -1,0 +1,21 @@
+# 运行扫描器产生的缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# 扫描报告（可能含敏感路径）
+报告.md
+报告.json
+audit-report.*
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 本地环境
+.env
+.venv/
+venv/

@@ -1,0 +1,29 @@
+# Changelog
+
+本文件遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+## [Unreleased]
+
+### Added
+
+- 每次审查强制确认本次版本采用的许可证：`--license` 声明，交互式终端自动询问，CI 用 `--no-prompt`。
+- 新增 `LIC-UNCONFIRMED`（未确认）、`LIC-MISMATCH`（声明与文件不一致）、`LIC-PROPRIETARY`（声明保留所有权利）三条检查。
+- 报告头与 JSON 输出新增本次版本许可证字段。
+
+## [1.0.0] - 2026-11-21
+
+### Added
+
+- `SKILL.md`：七步审查流程、P0–P3 分级、红线与报告要求。
+- `scripts/audit_repo.py`：零依赖只读扫描器，支持工作区 / 已跟踪 / 历史三种范围。
+- 敏感内容检测：私钥、`.env`、云平台令牌、JWT、连接串口令、内网地址、个人信息。
+- 卫生检测：依赖与构建目录、系统残留、数据文件、大文件三级阈值、`.gitignore` 失效检测。
+- 合规检测：必备文件矩阵、LICENSE 文本转 SPDX、README 四要素、包清单元数据一致性。
+- 误报控制：`.auditignore`、行内 `audit:allow`、私钥密钥体校验、占位符过滤。
+- `references/`：五份细则文档（禁止内容、必备文件、许可证、历史清理、报告模板）。
+- MIT 许可证，版权归属 SC-CATL。
+
+### Security
+
+- 报告中所有凭据自动脱敏，只保留首尾各 4 位。
+- 扫描器全程只读，不修改、不删除任何文件。

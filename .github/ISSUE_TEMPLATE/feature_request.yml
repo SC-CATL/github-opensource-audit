@@ -1,0 +1,89 @@
+name: 改进建议
+description: 建议新增检查项、调整级别或改进报告
+title: "[改进] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 填写指引
+
+        提改进时，**先说问题，再说方案**。直接给方案容易漏掉真实需求，维护者也无法判断优先级。
+
+        推荐结构：
+
+        - 现状：现在会漏掉什么 / 会误报什么
+        - 后果：这会导致什么实际风险（泄露？误导？噪音太大没人看报告？）
+        - 方案：检测什么、怎么识别、放在哪个级别
+        - 误报：什么情况下会误报，怎么过滤
+
+        如果是新增检测规则，**必须说明误报处理思路**，否则不予合并。
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 建议类型
+      options:
+        - 新增检查规则
+        - 调整现有规则的级别
+        - 改进报告可读性
+        - 改进性能
+        - 改进文档
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 现状与问题
+      description: 现在缺什么，导致什么后果。请给具体场景，不要只写「不够全面」
+      placeholder: |
+        现状：扫描器不检查 Dockerfile 里的 ARG 密钥。
+        后果：`docker history` 能还原出密钥，但报告显示无风险，给人虚假安全感。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 检测对象、识别方式、建议级别、报告中如何呈现
+      placeholder: |
+        在 Dockerfile 中匹配 `^(ARG|ENV)\s+\w*(SECRET|TOKEN|PASSWORD)\w*=`,
+        级别 P1，证据显示变量名但不显示值。
+    validations:
+      required: true
+
+  - type: textarea
+    id: false_positive
+    attributes:
+      label: 误报风险与过滤思路
+      description: 哪些合法写法会被误判？用什么方式排除（占位符、行内豁免、白名单）？
+      placeholder: |
+        `ARG SECRET_FILE=/run/secrets/x` 是合法用法，需排除值以 `/` 开头的项；
+        文档示例可通过 `audit:allow` 行内豁免。
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案
+      description: 有没有更简单或更稳妥的做法？为什么不用
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 参考资料
+      description: 规范链接、同类工具的实现（gitleaks、trufflehog 等）
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过已有 issue，确认不是重复
+          required: true
+        - label: 我理解新增规则需要同时给出误报处理方案
+          required: true
