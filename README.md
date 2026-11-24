@@ -12,6 +12,7 @@
 **不该上传的**
 
 - 密钥与凭据：`.env`、私钥、`credentials.json`、云平台令牌、连接串里的明文口令
+- 命名约定：`*-noupdate` / `*-noupdate.*` 表示本机敏感配置，进入提交范围即 P0
 - 个人信息：真实手机号、身份证、用户名单、数据库 dump
 - 内网痕迹：私网 IP、`.corp` / `.internal` 域名、私有 registry
 - 垃圾与产物：`node_modules`、`dist`、`__pycache__`、`.DS_Store`、日志、大文件

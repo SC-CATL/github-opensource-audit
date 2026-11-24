@@ -19,3 +19,5 @@ desktop.ini
 .env
 .venv/
 venv/
+*-noupdate
+*-noupdate.*

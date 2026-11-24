@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- 联动 DGUIApp 脚手架：新增 `-noupdate` 敏感配置命名约定检查。进入提交范围的 `*-noupdate` / `*-noupdate.*` 文件报 `SEC-NOUPDATE`（P0），历史中出现过的报 `HIST-NOUPDATE`（P0），`.gitignore` 缺少对应规则时报 `SEC-NOUPDATE-IGNORE`（P1）。
+- `SKILL.md`、`references/forbidden-content.md`、`references/required-files.md` 补充 `-noupdate` 的识别、修复与 `.gitignore` 最小规则。
+
 ## [1.2.0] - 2026-11-21
 
 ### Added

@@ -111,6 +111,7 @@ python scripts/audit_repo.py . --exclude "test/fixtures/"   # 跳过已知安全
 先跑脚本，再人工复核命中项。重点看：
 
 - 凭据文件：`.env`、`*.pem`、`*.key`、`id_rsa`、`credentials.json`、service account JSON、keystore、`.npmrc`、`.pypirc`、`.netrc`、kubeconfig、terraform state
+- 命名约定：`*-noupdate` / `*-noupdate.*`（如 `apikey-noupdate.toml`、`secrets-noupdate.json`、`.env-noupdate`）表示本机敏感配置。脚本发现它进入提交范围即报 `SEC-NOUPDATE`（P0）；`.gitignore` 未同时覆盖这两条规则时报 `SEC-NOUPDATE-IGNORE`（P1）
 - 代码内硬编码：`AKIA…`、`ghp_/gho_/ghs_`、`sk-…`、`xox…`、`AIza…`、`sk_live_`、JWT、`BEGIN PRIVATE KEY`
 - 通用赋值：`password = "..."`、`token: "..."`、`api_key=...`——脚本会报，但需要人判断是不是占位符
 - 个人与客户数据：真实手机号、身份证、邮箱名单、订单/工单导出、数据库 dump、带真实数据的 fixture
@@ -125,6 +126,7 @@ python scripts/audit_repo.py . --exclude "test/fixtures/"   # 跳过已知安全
 - 数据文件：`*.db`、`*.sqlite`、`*.dump`、`*.bak`
 - 大文件：>5MB 提示、>50MB 告警、>100MB 直接阻断（GitHub 硬限制）
 - **ignore 失效**：`git ls-files -ci --exclude-standard` —— 已经被跟踪、但规则说该忽略的文件。这是最常见的坑，改 `.gitignore` 对已跟踪文件无效，必须 `git rm --cached`。
+- **`-noupdate` 规则缺失**：仓库里已有敏感配置，但 `.gitignore` 没有同时包含 `*-noupdate` 与 `*-noupdate.*`；脚本报 `SEC-NOUPDATE-IGNORE`，先补规则再确认 `git check-ignore`。
 
 ### 4. 必备文件矩阵
 
@@ -257,7 +259,7 @@ gh repo edit <owner>/<name> --add-topic topic1,topic2
 
 | 级别 | 含义 | 处理 |
 |---|---|---|
-| P0 阻断 | 绝不能推：私钥、有效令牌、真实用户数据、商业代码、客户名单 | 修完并轮换密钥后才能继续 |
+| P0 阻断 | 绝不能推：私钥、有效令牌、真实用户数据、商业代码、客户名单、进入提交范围的 `-noupdate` 配置 | 修完并轮换密钥后才能继续 |
 | P1 高 | 推前必须修：缺 LICENSE、大文件、构建产物入库、ignore 失效、数据文件 | 本次提交内解决 |
 | P2 中 | 影响可用性与信任：README 缺安装/示例、缺 SECURITY、元数据不一致、内网地址残留 | 发布前解决 |
 | P3 建议 | 锦上添花：CHANGELOG、模板、badges、.editorconfig | 排期即可 |
@@ -268,6 +270,7 @@ gh repo edit <owner>/<name> --add-topic topic1,topic2
 - 报告里的密钥一律脱敏，只显示首尾各 4 位。不要把完整密钥再写进任何文件。
 - 默认只读。删除文件、`git rm --cached`、改写历史、force push 都必须先说明后果并得到确认。
 - 不要建议"直接删掉 `.env` 就安全了"——已经提交过的，先轮换。
+- **`-noupdate` 后缀是敏感配置的强约定**：带该后缀的文件一律按 P0 处理，不因其内容没有命中正则就放行；修复时先轮换，再 `git rm --cached` 并补齐 `*-noupdate` / `*-noupdate.*`。
 - 不确定是否为真实数据的，按 P0 处理并让用户确认，不要自行判定为"测试数据"。
 - 脚本退出码为 0 不代表可以发布，只代表没命中已知模式。
 - **在非交互环境直接跑 `git push` 前，先确认凭据助手已配置**，否则会挂起而不是报错。

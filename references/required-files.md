@@ -70,6 +70,7 @@
 
 - 按技术栈生成，别手写几十行容易漏。
 - **密钥优先级最高**：`.env`、`*.pem`、`*.key`、`id_*`、`credentials.json`。
+- **本机敏感配置统一后缀**：保留 `*-noupdate` 与 `*-noupdate.*` 两行，覆盖 `apikey-noupdate.toml`、`.env-noupdate` 等命名约定。
 - 不要忽略 lockfile（`package-lock.json`、`poetry.lock`、`Cargo.lock`）——应用类项目应当提交，保证可复现。
 - 不要忽略测试 fixture 里的必要数据。
 - 加了规则后检查是否真的生效：`git status --ignored`、`git ls-files -ci --exclude-standard`。

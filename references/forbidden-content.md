@@ -56,6 +56,21 @@
 - 危险：`.github/workflows/*.yml`、`.gitlab-ci.yml`、`docker-compose.yml`、`Dockerfile` 里常有直接写死的密钥，或 `ARG SECRET=...`。
 - 做法：改用仓库 Secrets（`${{ secrets.X }}`）；注意 `echo` 出密钥会把值打进公开日志。
 
+### 7. `-noupdate` 命名配置
+
+- 约定：本机 API Key、Token、私有连接串等文件统一命名为 `<用途>-noupdate.<扩展名>`，例如 `apikey-noupdate.toml`、`secrets-noupdate.json`、`.env-noupdate`。后缀紧邻扩展名或位于结尾。
+- 危险：这类文件按定义就是“不该上传”的明文凭证；即使内容暂时没命中密钥正则，公开后也可能立刻可用。
+- 识别：脚本对进入提交范围的 `-noupdate` 文件报 `SEC-NOUPDATE`（P0），历史中出现过的报 `HIST-NOUPDATE`（P0）；`.gitignore` 缺少任一规则时报 `SEC-NOUPDATE-IGNORE`（P1）。
+- 做法：`.gitignore` 同时保留两条：
+
+```gitignore
+*-noupdate
+*-noupdate.*
+```
+
+- 已提交：先轮换密钥，再 `git rm --cached <file>`；历史存在的按 `history-cleanup.md` 处理。可提交只含占位符的 `.env.example` / `config.example.toml`。
+- 与 DGUIApp 脚手架联动：生成项目自带同款规则、`scripts/check_noupdate.py` 与 pre-commit / CI 拦截。
+
 ---
 
 ## 二、个人与客户数据（P0）

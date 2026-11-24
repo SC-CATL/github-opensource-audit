@@ -69,6 +69,11 @@ SECRET_FILE_RULES = [
     (r"(?:^|/)secrets?\.(?:ya?ml|json|toml|ini)$", "secrets 文件"),
 ]
 
+# 本机敏感配置命名约定：文件名以 -noupdate 结尾，或 -noupdate 紧跟扩展名
+# 例如 apikey-noupdate.toml、secrets-noupdate.json、.env-noupdate
+NOUPDATE_MARKER = "-noupdate"
+NOUPDATE_IGNORE_SAMPLES = ("apikey-noupdate.toml", ".env-noupdate")
+
 # 文件名判 P1（可能不含凭据，需确认）
 CRED_FILE_RULES = [
     (r"(?:^|/)\.npmrc$", "npm 配置（可能含 authToken）"),
@@ -310,6 +315,12 @@ def gitignore_ignored(rel, patterns):
     return ignored
 
 
+def is_noupdate_name(rel):
+    """文件名是否带 -noupdate 命名后缀（位于扩展名前或结尾）。"""
+    name = rel.rsplit("/", 1)[-1]
+    return name.endswith(NOUPDATE_MARKER) or (NOUPDATE_MARKER + ".") in name
+
+
 def human_size(num):
     for unit in ("B", "KB", "MB", "GB"):
         if num < 1024 or unit == "GB":
@@ -459,6 +470,31 @@ def check_secret_files(files, findings):
                         "确认无真实令牌；建议只提交 .example 模板。",
                     ))
                     break
+
+
+def check_noupdate(root, files, findings):
+    """-noupdate 命名文件视为本机敏感配置：进入提交范围即 P0，并校验忽略规则。"""
+    hits = [rel for rel in files if is_noupdate_name(rel)]
+    if not hits:
+        return
+    tracked = set(git_list(root, ["ls-files", "-z"]) or [])
+    for rel in hits:
+        state = "已被 git 跟踪，推送即公开。" if rel in tracked else "尚未入库，但 git add . 会带上。"
+        findings.append(Finding(
+            "P0", "SEC-NOUPDATE", "-noupdate 敏感配置出现在提交范围", rel, 0, "",
+            state + "该后缀约定用于本机 API Key / Token 等敏感配置。",
+            "真实密钥先轮换；执行 git rm --cached %s；并确保 .gitignore 含 "
+            "*-noupdate 与 *-noupdate.*。" % rel,
+        ))
+    patterns = load_gitignore(root)
+    missing = [name for name in NOUPDATE_IGNORE_SAMPLES if not gitignore_ignored(name, patterns)]
+    if missing:
+        findings.append(Finding(
+            "P1", "SEC-NOUPDATE-IGNORE", ".gitignore 未完整忽略 -noupdate 配置",
+            ".gitignore", 0, "未覆盖：%s" % "、".join(missing),
+            "规则缺失时，本机密钥会被 git add . 顺手带上。",
+            "添加 *-noupdate 与 *-noupdate.* 两行，再用 git check-ignore 验证。",
+        ))
 
 
 def check_artifact_dirs(files, findings):
@@ -976,6 +1012,14 @@ def check_history(root, findings, max_commits, excludes=None):
         seen_paths.add(path)
         if is_excluded(path, excludes):
             continue
+        if is_noupdate_name(path):
+            findings.append(Finding(
+                "P0", "HIST-NOUPDATE", "历史中存在 -noupdate 敏感配置", path, 0,
+                "该路径在历史中出现过",
+                "任何 clone 过该仓库的人都持有该内容，删除当前文件无法挽回。",
+                "先轮换凭据，再用 git filter-repo 清理历史并 force push。",
+            ))
+            continue
         low = path.lower()
         for pattern, label in SECRET_FILE_RULES:
             if re.search(pattern, low):
@@ -1221,6 +1265,7 @@ def main(argv=None):
         declared = (prompt_license(spdx) or "").strip()
 
     check_secret_files(files, findings)
+    check_noupdate(root, files, findings)
     check_artifact_dirs(files, findings)
     check_file_hygiene(root, files, findings, args.max_size)
     check_content(root, files, findings)
